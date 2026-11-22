@@ -1,0 +1,24 @@
+# PEANUTS: Demon Slayer - The Hinokami Chronicles
+# Bootstrap profile; not yet surveyed.
+
+title_id	0100309016E7A000
+program_id	0100309016E7A000
+
+name	Demon Slayer - The Hinokami Chronicles
+ipa	DemonSlayerHinokami.ipa
+app_category	public.app-category.action-games
+pad_layout	full
+
+# Update v589824; Build IDs not yet verified.
+# Modules and shader data not yet surveyed.
+shader_note	Not surveyed yet
+
+# Temporary bootstrap; verify against ExeFS.
+modules	main
+romfs_marker	
+
+# TEMPORARY MEMORY VALUES - NOT VERIFIED FOR DEMON SLAYER
+mem_reserve	0x100000000
+mem_alias	0x10000000
+mem_stack	0x10000000
+app_pool	0xCD500000
