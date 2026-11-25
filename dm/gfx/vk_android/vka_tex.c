@@ -2707,17 +2707,40 @@ static void rw_note(int i) {   // copy i recorded
 }
 // PEANUTS end
 
+
+extern int dm_v11_is_ui(uint64_t serial);
 void mtl_tex_write_region(const tex_t *t, unsigned level, unsigned layer0, const NVNcopyRegion *r, const uint8_t *src, size_t row, size_t img) {
     if (!t || !r || !src) return;
     pthread_mutex_lock(&g_tmu);
     smap_ent *e = map_get(t->serial);
     vka_img *im = e ? e->im : NULL;
+
+    static unsigned ui_logs = 0;
+    int ui = !t->mem && t->d.width == 1600 &&
+             t->d.height == 900;
+    int trace = ui && ui_logs++ < 20;
+
+    if (trace)
+        LOG("[V10-UI] serial=%llu image=%p",
+            (unsigned long long)t->serial,
+            (void *)im);
+
     if (!im) {
+        if (trace)
+            LOG("[V10-UI] BLOCKED: no Vulkan image");
+
         cpuw_take(t->serial, 1);
         pthread_mutex_unlock(&g_tmu);
         return;
     }
-    if (im->gpu_owned || img_pool_dead(im)) {
+    
+if ((im->gpu_owned &&
+     !dm_v11_is_ui(t->serial)) ||
+     img_pool_dead(im)) {
+        if (trace)
+            LOG("[V10-UI] BLOCKED: gpu_owned=%d dead=%d",
+                im->gpu_owned, img_pool_dead(im));
+
         pthread_mutex_unlock(&g_tmu);
         return;
     }
@@ -2727,6 +2750,9 @@ void mtl_tex_write_region(const tex_t *t, unsigned level, unsigned layer0, const
     // stores is not followed from here on: if one exists, this is where it shows (the texture stays as WriteTexels left it)
     if (im->track || im->mode == ST_TRACK) { im->track = 0; im->mode = ST_FILL; }
     im->wt = 1;
+    if (trace)
+        LOG("[V10-UI] Vulkan accepted texture update");
+
     const vka_fmt *f = &im->f;
     int nz = r->depth ? r->depth : 1;
     // The raw guest bytes are only the image's texels when no conversion lies between them (depth/stencil, video, a mapped format: the whole-image upload handles those),
@@ -3768,7 +3794,10 @@ void vka_tex_prepare(VkCommandBuffer cb) {
         vka_img *im = w->im;
         if (!im) continue;                    // PEANUTS: its image went with its pool before the copy (rw_cancel_locked)
         if (im->rw_pend) im->rw_pend--;       // PEANUTS: (the entry's own reference is let go below)
-        if (!im->gpu_owned && !img_pool_dead(im) && !im->rsc) {   // PEANUTS: rsc (a region in the texture's pixels: never into a scaled image, which the GPU owns anyway)
+        
+if ((!im->gpu_owned ||
+     dm_v11_is_ui(im->serial)) &&
+     !img_pool_dead(im) && !im->rsc) {   // PEANUTS: rsc (a region in the texture's pixels: never into a scaled image, which the GPU owns anyway)
             vka_span s;
             if (vka_scratch(w->size, 16, &s)) {
                 if (rw_overlaps(w, rw_since)) { vka_barrier(cb); rw_reset(); rw_since = i; }   // PEANUTS: only copies since the last barrier, small ones by texel (rw_overlaps)

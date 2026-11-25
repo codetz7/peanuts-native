@@ -679,6 +679,25 @@ NVN(nvnTextureBuilderSetLevels, void, NVNtextureBuilder *b, int v) { TB(b)->d.le
 NVN(nvnTextureBuilderSetFormat, void, NVNtextureBuilder *b, NVNformat f) { TB(b)->d.format = f; }
 NVN(nvnTextureBuilderSetSamples, void, NVNtextureBuilder *b, int s) { TB(b)->d.samples = s; }
 NVN(nvnTextureBuilderSetStride, void, NVNtextureBuilder *b, ptrdiff_t s) { TB(b)->d.stride = (uint32_t)s; }
+
+#ifdef __ANDROID__
+extern int dm_gl_texture_size(unsigned, int *, int *);
+static _Thread_local const NVNtextureBuilder *v15_builder;
+static _Thread_local unsigned v15_name;
+NVN(nvnTextureBuilderSetGLTextureName, void, NVNtextureBuilder *b, uint32_t name) {
+    int w=0,h=0;
+    v15_builder=b; v15_name=name;
+    if (name && dm_gl_texture_size(name,&w,&h)) {
+        TB(b)->d.format=NVN_FORMAT_RGBA8;
+        TB(b)->d.samples=1;
+        TB(b)->d.width=w; TB(b)->d.height=h;
+        TB(b)->d.depth=1; TB(b)->d.levels=1;
+        TB(b)->d.target=NVN_TEXTURE_TARGET_2D;
+        LOG("[V15] GL name=%u size=%dx%d",name,w,h);
+    }
+}
+#endif
+
 NVN(nvnTextureBuilderSetStorage, void, NVNtextureBuilder *b, NVNmemoryPool *p, ptrdiff_t off) { TB(b)->pool = (pool_t *)p; TB(b)->off = off; }
 NVN(nvnTextureBuilderSetPackagedTextureLayout, void, NVNtextureBuilder *b, const NVNpackagedTextureLayout *l) {
     TB(b)->has_layout = l != NULL; if (l) memcpy(TB(b)->layout, l->layout, 8);
@@ -838,8 +857,41 @@ int nvn_flushed(const void *p, uint64_t n) {   // whether the CPU flushed any of
     return r;
 }
 __attribute__((weak)) int dm_codec_is_video_mem(const void *mem, uint64_t size, uint32_t *stride) { (void)mem; (void)size; (void)stride; return 0; }
+
+#ifdef __ANDROID__
+static tex_t *v9_ui_texture;
+static unsigned v15_ui_name;
+static _Atomic uint64_t v15_serial;
+static pthread_mutex_t v15_mu=PTHREAD_MUTEX_INITIALIZER;
+int dm_v11_is_ui(uint64_t serial) { return serial && atomic_load(&v15_serial)==serial; }
+extern int dm_gl_read_ui(unsigned, int, int, void *);
+void dm_v9_upload_ui(void) {
+    pthread_mutex_lock(&v15_mu);
+    tex_t *t=v9_ui_texture;
+    if (t && t->magic==MAGIC('T','E','X',0)) {
+        unsigned w=t->d.width,h=t->d.height;
+        static uint8_t *pixels;
+        static size_t capacity;
+        if (w && h && w<=4096 && h<=4096) {
+            size_t bytes=(size_t)w*h*4;
+            if (capacity<bytes) { void *p=realloc(pixels,bytes); if(p){pixels=p;capacity=bytes;} }
+            if (capacity>=bytes && dm_gl_read_ui(v15_ui_name,w,h,pixels)) {
+                NVNcopyRegion r={.width=w,.height=h,.depth=1};
+                mtl_tex_write_region(t,0,0,&r,pixels,(size_t)w*4,0);
+            }
+        }
+    }
+    pthread_mutex_unlock(&v15_mu);
+}
+#endif
+
 NVN(nvnTextureInitialize, NVNboolean, NVNtexture *t, const NVNtextureBuilder *b) {
     const tex_builder_t *s = (const tex_builder_t *)b; tex_t *o = TX(t);
+#ifdef __ANDROID__
+    pthread_mutex_lock(&v15_mu);
+    if(v9_ui_texture==o){v9_ui_texture=NULL;atomic_store(&v15_serial,0);}
+    pthread_mutex_unlock(&v15_mu);
+#endif
     // Re-initializing a texture object that is still live (without a Finalize first): release the host texture of the old serial first. SMBW re-initializes its transient render targets on the same object every frame and never Finalizes them;
     //   previously every init created a new private MTLTexture and the old one stayed in the serial table forever, so GPU memory grew about 13 MB per frame (killed by the memory watchdog at 24 GB)
     if (o->magic == MAGIC('T', 'E', 'X', 0) && o->serial) { static uint64_t n; if (!n++) LOG("[nvn] TextureInitialize on a texture object that is still live (no Finalize): releasing the old host texture (first case ser=%llu)", (unsigned long long)o->serial); mtl_tex_release(o); }
@@ -856,6 +908,29 @@ NVN(nvnTextureInitialize, NVNboolean, NVNtexture *t, const NVNtextureBuilder *b)
         nvn_tex_layout(&o->d, &o->L);
     }
     o->serial = nvn_new_serial(); mtl_tex_init(o);
+#ifdef __ANDROID__
+    if (v15_builder==b && v15_name && !o->mem && !o->pool) {
+        pthread_mutex_lock(&v15_mu);
+        v9_ui_texture=o; v15_ui_name=v15_name;
+        atomic_store(&v15_serial,o->serial);
+        pthread_mutex_unlock(&v15_mu);
+        LOG("[V15] registered GL=%u NVN=%llu %ux%u",v15_name,(unsigned long long)o->serial,o->d.width,o->d.height);
+    }
+    if(v15_builder==b){v15_builder=NULL;v15_name=0;}
+#endif
+
+#ifdef __ANDROID__
+    if (o->d.width == 1600 &&
+        o->d.height == 900 &&
+        o->d.format == NVN_FORMAT_RGBA8) {
+        LOG("[V8-UI] NVN init serial=%llu mem=%p pool=%p size=%llu",
+            (unsigned long long)o->serial,
+            (void *)o->mem,
+            (void *)o->pool,
+            (unsigned long long)o->L.size);
+    }
+#endif
+
     if (o->mem) pc_use(o->pool, 't', o->off, o->L.size);
     if (o->mem && shp_use(SHK_TEX, (uint64_t)(uintptr_t)o->mem, o->L.size, NULL, NULL) == 2 && !g_shp_place) mtl_pool_place(o->mem, o->L.size, "a texture in a shader-code pool");   // (Shader-code pools: a texture is a data use) PEANUTS(upstream-candidate): placed, never joined (vka_mem.c mtl_pool_place)
     if (o->mem && o->d.flags & (NVN_TEXTURE_FLAGS_LINEAR | NVN_TEXTURE_FLAGS_LINEAR_RENDER_TARGET)) mtl_pool_need(o->mem, o->L.size, "a linear texture");   // its GPU content is copied back into the storage (vka_tex_writeback)
@@ -881,7 +956,13 @@ NVN(nvnTextureInitialize, NVNboolean, NVNtexture *t, const NVNtextureBuilder *b)
     ft_add(o);
     return 1;
 }
-NVN(nvnTextureFinalize, void, NVNtexture *t) { ft_del(TX(t)->serial); mtl_tex_release(TX(t)); TX(t)->magic = 0; }
+NVN(nvnTextureFinalize, void, NVNtexture *t) {
+#ifdef __ANDROID__
+    pthread_mutex_lock(&v15_mu);
+    if (v9_ui_texture == TX(t)) { v9_ui_texture=NULL; atomic_store(&v15_serial,0); }
+    pthread_mutex_unlock(&v15_mu);
+#endif
+ ft_del(TX(t)->serial); mtl_tex_release(TX(t)); TX(t)->magic = 0; }
 NVN(nvnTextureGetFlags, NVNtextureFlags, const NVNtexture *t) { return (NVNtextureFlags)CTX(t)->d.flags; }
 NVN(nvnTextureGetWidth, int, const NVNtexture *t) { return (int)CTX(t)->d.width; }
 NVN(nvnTextureGetHeight, int, const NVNtexture *t) { return (int)CTX(t)->d.height; }
