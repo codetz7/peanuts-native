@@ -90,7 +90,14 @@ final class Profile {
         return false;
     }
 
+    boolean narutoFpsPlan() {
+        return fpsLockerPlan.startsWith(
+            "48ece454b61412b9fb46fab2be3f5ef7,")
+            && fpsModes.equals("30,60");
+    }
+
     boolean fpsRestart(int started, int selected) {
+        if (narutoFpsPlan() && started != selected) return true;
         return (started == -2) != (selected == -2) || !fpsPlan120.isEmpty() && (started == 120) != (selected == 120);
     }
     // PEANUTS: native timing modes need an engine target as well as a presentation limit.

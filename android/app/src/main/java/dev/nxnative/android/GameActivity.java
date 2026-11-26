@@ -663,7 +663,9 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
         // PEANUTS end
         // PEANUTS: a supported update may lack this game's reviewed FPSLocker plan.
         boolean hasFpsPlan = prof == null || prof.fpsLockerPlanMatches(BuildCheck.builds(pack).get("main"));
-        gameOwnedAtStart = !hasFpsPlan || Prefs.limited(id) && fpsModeAtStart == FrameRateCaps.GAME_OWNED;
+        gameOwnedAtStart = !hasFpsPlan
+                || Prefs.limited(id) && fpsModeAtStart == FrameRateCaps.GAME_OWNED
+                || prof != null && prof.narutoFpsPlan() && fpsModeAtStart == 30;
         if (prof != null && prof.fpsPlan120.isEmpty() && (!prof.fpsLocker.isEmpty() || !prof.fpsLockerPlan.isEmpty()) && !gameOwnedAtStart) env.add("DM_FPSLOCKER_INTERVAL=1");
         if (prof != null && hasFpsPlan && !prof.fpsLockerPlan.isEmpty()) env.add("DM_FPSLOCKER_PLAN=" + prof.fpsLockerPlan);   // PEANUTS: only pass a plan the loader can apply
         if (prof != null && prof.fpsPlan120.isEmpty() && !prof.fpsLocker.isEmpty() && !gameOwnedAtStart) env.add("DM_FPSLOCKER=" + prof.fpsLocker);
