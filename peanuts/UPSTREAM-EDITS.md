@@ -2823,3 +2823,11 @@ Qualcomm's own driver loses some dynamic state at a render pass begin and at a p
 | `dm/gfx/vk_android/vka_draw.c`, `vka_auto.h` | 7, 1 | `DM_VK_DYN_PASS` (`dyn_pass_begin`): every dynamic state set again at a pass's first draw and after each pipeline bind on Qualcomm's own driver (by driver ID), which lost the depth write enable at a pass begin and the cull mode at a pipeline bind; its `[auto]` rule | `PEANUTS` |
 | `docs/env_switches.tsv`, `docs/advanced_settings.tsv` | 1, 1 | the `DM_VK_DYN_PASS` rows | rows |
 | `docs/reference/rendering.md`, `docs/agents/symptoms.md` | 1, 1 | the entry "Characters black on Qualcomm's driver: dynamic state lost at a pass begin or a pipeline bind", and its line in the generated index | `PEANUTS` / generated |
+## NVN BGR5A1 on Android (2026-11-26)
+
+NVN_FORMAT_BGR5A1 (0x97) had no Vulkan format; NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS samples one such texture. Found while taking over the draft igawa6/peanuts-native#637 (codetz7).
+
+| File | Hunks | What | Marker |
+|---|---|---|---|
+| `dm/gfx/vk_android/vka_tex.c` | 1 | NVN BGR5A1 (0x97) → `VK_FORMAT_A1R5G5B5_UNORM_PACK16` in `fmt_ent_of` | `PEANUTS` |
+| `docs/reference/rendering.md`, `docs/agents/symptoms.md` | 1, 1 | the entry "A material's body invisible or black: NVN_FORMAT_BGR5A1 had no Vulkan format", and its line in the generated index | `PEANUTS` / generated |
