@@ -1,0 +1,69 @@
+name: Bayonetta 3 Android Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - bayonetta3-apk-test
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK and NDK
+        run: |
+          sdkmanager "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+      - name: Prepare native stage
+        run: |
+          mkdir -p "$RUNNER_TEMP/pack-stage"
+          tar -xzf ci/bayo-apk-stage.tar.gz \
+            -C "$RUNNER_TEMP/pack-stage"
+          echo "NX_PACK_STAGE=$RUNNER_TEMP/pack-stage" >> "$GITHUB_ENV"
+
+      - name: Validate translator
+        run: |
+          python dm/gfx/tools/xlate_tree.py \
+            --check-lib "$NX_PACK_STAGE/lib/libdmsh_xlate.so"
+
+      - name: Build Bayonetta 3 APK
+        working-directory: android/app
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          chmod +x gradlew
+          ./gradlew \
+            -PnxGames=01004A4010FEA000 \
+            -PnxApp=peanuts \
+            -PnxAppId=bayo3 \
+            -PnxGenericHost=true \
+            -PnxLabel="Peanuts Bayonetta 3 Test" \
+            -PnxPackStage="$NX_PACK_STAGE" \
+            apk --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bayonetta3-Android-Test
+          path: android/app/out/*.apk
+          if-no-files-found: error
