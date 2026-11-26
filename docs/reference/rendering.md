@@ -1347,7 +1347,7 @@ Digimon Story Cyber Sleuth: Complete Edition (Media.Vision's MVGL engine, SDK 6.
   - a context made current with no surface faults in Qualcomm's OpenGL ES when the game reads the default framebuffer's state (`glGetIntegerv(GL_RED_BITS)`: address 0x38 in `libGLESv2_adreno.so`, Adreno 740 V@0676.32): the layer makes such a context current on a 1x1 pbuffer of its configuration;
   - the game keeps GL function pointers in objects of its own and calls them from there (`glGetStringi` through a table at `main+0xdb497c`), which a census of GOT loads (`loader_census.py`) does not see; a null pointer crashed the first frame. Every GL name the system has is served: the called ones through wrappers, the others through a stub each that runs the system's function on the big host stack.
 - **Check:** Odin 2 (Adreno 740), Turnip 27.0.0-R2 and the system driver: title, menus and a training fight show the 3D frame under the UI over many frames, at 30 fps (SurfaceFlinger); a docked → handheld → docked switch mid-fight shares the recreated texture each time (1600x900, 1120x630, 1600x900).
-- **Found on:** NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS (`01005A20190A6000`, 1.70: `main+0x972cc4` and `main+0x973824`).
+- **Found on:** [NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS](../../dm/games/01005A20190A6000/README.md) (1.70: `main+0x972cc4` and `main+0x973824`).
 
 ### Characters black on Qualcomm's driver: dynamic state lost at a pass begin or a pipeline bind
 
