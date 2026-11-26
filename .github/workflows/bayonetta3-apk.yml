@@ -29,8 +29,10 @@ jobs:
       - name: Install SDK and NDK
         run: |
           echo "SDK: $ANDROID_HOME"
-          command -v sdkmanager
-          sdkmanager "platforms;android-36" \
+          SDKMANAGER=$(find "$ANDROID_HOME" -type f -name sdkmanager | sort -V | tail -1)
+          test -x "$SDKMANAGER"
+          echo "SDKMANAGER: $SDKMANAGER"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platforms;android-36" \
             "build-tools;36.0.0" \
             "ndk;28.2.13676358" \
             "cmake;3.22.1"
