@@ -42,3 +42,4 @@ shader_note	NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS shaders
 # ---- Experimental frame rate ----
 fps_target	30
 fps_modes	30,60
+fpslocker_plan	48ece454b61412b9fb46fab2be3f5ef7	m0x886ac0	d8a2ed97	80078052
