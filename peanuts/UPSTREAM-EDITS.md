@@ -2814,3 +2814,12 @@ NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS draws its UI with OpenGL throug
 | `dm/gfx/vk_android/vka_tex.c`, `vka.h` | 3, 3 | `img_create_gl`: the image of an NVN texture made from a GL texture is its AHardwareBuffer, imported (dedicated memory, GPU-owned, no clear or upload at its first use); `vka_img.gl_ahb`, `vka_dev.gl_ahb`, `vka_gl_ahb` | `PEANUTS` / `PEANUTS begin` |
 | `dm/gfx/vk_android/vka_dev.c` | 2 | `VK_ANDROID_external_memory_android_hardware_buffer` and `VK_EXT_queue_family_foreign` when the game imports EGL and the driver has them (one log line); room for 28 device extensions | `PEANUTS` |
 | `docs/reference/rendering.md`, `docs/agents/symptoms.md` | 1, 1 | the entry "An NVN game whose UI draws with OpenGL through EGL (Android)", and its line in the generated index | `PEANUTS` / generated |
+## Dynamic state on Qualcomm's Vulkan driver (2026-11-26)
+
+Qualcomm's own driver loses some dynamic state at a render pass begin and at a pipeline bind; NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS draws its characters black there. Found while taking over the draft igawa6/peanuts-native#637 (codetz7).
+
+| File | Hunks | What | Marker |
+|---|---|---|---|
+| `dm/gfx/vk_android/vka_draw.c`, `vka_auto.h` | 7, 1 | `DM_VK_DYN_PASS` (`dyn_pass_begin`): every dynamic state set again at a pass's first draw and after each pipeline bind on Qualcomm's own driver (by driver ID), which lost the depth write enable at a pass begin and the cull mode at a pipeline bind; its `[auto]` rule | `PEANUTS` |
+| `docs/env_switches.tsv`, `docs/advanced_settings.tsv` | 1, 1 | the `DM_VK_DYN_PASS` rows | rows |
+| `docs/reference/rendering.md`, `docs/agents/symptoms.md` | 1, 1 | the entry "Characters black on Qualcomm's driver: dynamic state lost at a pass begin or a pipeline bind", and its line in the generated index | `PEANUTS` / generated |
