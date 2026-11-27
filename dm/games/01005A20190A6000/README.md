@@ -39,6 +39,39 @@ Odin 2 (Snapdragon 8 Gen 2, Adreno 740, 16 GB, Android 13), update 1.70 from a d
 - **Prepare on the phone:** 56 s from the dump on the SD card (the code 42 s, the shader split 3 s, 570 shaders 3 s, the pack 4 s); 570 of 570 shaders made, every one of the 585 modules valid for `spirv-val`, a 93 MiB pack, the same Vulkan chain and inputs as the PC pack.
 - **Seen once:** a crash in Android's own UI rendering (`libhwui.so` `ClipStack`, the game process's RenderThread) at the character select on the system driver; not seen again in the later runs (no new entry in the phone's crash log).
 
+## Experimental 60 fps
+
+The 1.70 main build supports an experimental 60 fps code plan
+(`fpslocker_plan` in [game.tsv](game.tsv)).
+
+- At `main+0x886ac0`, replace `BL 0x3ef620`
+  (`d8a2ed97`) with `MOV W0, #60` (`80078052`).
+  The original 30 fps getter remains unchanged.
+- The patch is checked against the exact main build ID
+  and original instruction bytes.
+- Patch source: [60 FPS mod for update 1.7.0](https://gbatemp.net/threads/naruto-x-boruto-ultimate-ninja-storm-connections-60-fps-mod-v1-7-0.684554/).
+
+### Device results
+
+| Device | 30 fps | 60 fps |
+|---|---|---|
+| AYN Odin 2 (Adreno 740) | Normal game speed | Median frame interval 16.7 ms on both drivers; normal game speed |
+| POCO Pad X1 (Snapdragon 7+ Gen 3, Android 16, 8 GB) | Normal game speed | Playable; slow motion when the frame rate falls below 60 |
+
+On Odin 2, 0.4% of frames exceeded 17.5 ms on Turnip
+27.0.0-R2 and 1.6% on the system driver. Game speed was
+checked against Six Paths Naruto's idle animation loop.
+
+The POCO Pad X1 results were obtained with the US 1.70
+release and an experimental launcher build. Switching
+between 30 and 60 fps required a game restart.
+
+Known limitation: the 60 fps patch does not compensate
+for missed frames on slower devices. The original 30 fps
+mode is recommended when 60 fps cannot be sustained.
+
+Testing discussion: [#637](https://github.com/igawa6/peanuts-native/pull/637#issuecomment-7210190115).
+
 ## Shaders
 
 - `data/system/nuccMaterial_nx.nsh` (452 records) and `nuccPostEffect_nx.nsh` (136) are `NUP4` packages of plain GLSLC outputs; the 45 `data/out/*.nvn` are single ones; `main` holds 2.
