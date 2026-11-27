@@ -742,7 +742,7 @@ def rewrite(py, srcs, out, jobs, g, in_process=False, xmod=None):
     rewritten into a staging folder and swapped in when it is complete (swap_in), so a run stopped part way never leaves new code with old tables.
     in_process: each in this process (run_in_process) with one worker, one module after the other.
     PEANUTS: xmod = {module: layout file} (cross_module, a build with code mods): those modules are rewritten with --xmod and keyed with the file (xmod_keys)"""
-    env = child_env(DM_GAME=g.id, DM_REWRITE_J=str(max(1, (os.cpu_count() or 4) // max(1, len(srcs)))))
+    env = child_env(DM_GAME=g.id, DM_REWRITE_J=os.environ.get('DM_REWRITE_J') or str(max(1, (os.cpu_count() or 4) // max(1, len(srcs)))))
     todo = {}
     xmod = xmod or {}; xargs = lambda m: ['--xmod', str(xmod[m])] if m in xmod else []   # PEANUTS
     for m, src in srcs.items():
@@ -802,7 +802,7 @@ def rewrite(py, srcs, out, jobs, g, in_process=False, xmod=None):
                 m = pending.pop(0); kf = out / f'{m}.android.key'; kf.unlink(missing_ok=True); shutil.rmtree(staging(out, m), ignore_errors=True)
                 print(f'  {m}: rewriting {todo[m][0]}', flush=True)
                 log = open(out / f'rewrite_{m}.log', 'w')
-                procs[m] = (subprocess.Popen([py, str(REPO / 'dm/tools/patch_nso.py'), str(files[m]), str(staging(out, m)), m, '--target', 'android', *xargs(m)], env=dict(env, DM_REWRITE_J=str(share[m])), stdout=log, stderr=subprocess.STDOUT), log)   # PEANUTS: xargs
+                procs[m] = (subprocess.Popen([py, str(REPO / 'dm/tools/patch_nso.py'), str(files[m]), str(staging(out, m)), m, '--target', 'android', *xargs(m)], env=dict(env, DM_REWRITE_J=os.environ.get('DM_REWRITE_J') or str(share[m])), stdout=log, stderr=subprocess.STDOUT), log)   # PEANUTS: xargs
             for m in list(procs):
                 p, log = procs[m]
                 if p.poll() is None: continue
