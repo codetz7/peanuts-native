@@ -1,0 +1,49 @@
+name: Build Android Shader Translator
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - bayo-shader-translator
+
+permissions:
+  contents: read
+
+jobs:
+  translator:
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Android NDK
+        shell: bash
+        run: |
+          NDK=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          test -n "$NDK"
+          echo "ANDROID_NDK_HOME=$NDK" >> "$GITHUB_ENV"
+          echo "NDK=$NDK"
+
+      - name: Check source tree
+        run: |
+          python3 dm/gfx/tools/xlate_tree.py
+          test -f dm/third_party/ryujinx/src/Ryujinx.Graphics.Shader/Ryujinx.Graphics.Shader.csproj
+
+      - name: Build native translator
+        run: |
+          zsh dm/gfx/tools/dmsh_xlate_android/build.sh \
+            "$RUNNER_TEMP/translator" lib
+
+      - name: Upload translator
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-shader-translator
+          path: ${{ runner.temp }}/translator/lib/libdmsh_xlate.so
+          if-no-files-found: error
