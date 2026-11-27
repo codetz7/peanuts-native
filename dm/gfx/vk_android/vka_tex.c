@@ -3445,6 +3445,20 @@ static VkImageView view_of(const treg_ent *e, vka_img *im, int vt_want, int stor
     if (img3d ? (vt != VK_IMAGE_VIEW_TYPE_3D && vt != VK_IMAGE_VIEW_TYPE_2D && vt != VK_IMAGE_VIEW_TYPE_2D_ARRAY) : vt == VK_IMAGE_VIEW_TYPE_3D) return VK_NULL_HANDLE;
     if (img3d && vt != VK_IMAGE_VIEW_TYPE_3D) nl = 1;   // PEANUTS: a slice view of a 3D image is one level (Vulkan: levelCount 1 for a 2D/2D-array view of a 3D image)
     if (vt == VK_IMAGE_VIEW_TYPE_CUBE || vt == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+        // Experimental: recover a whole cube from a single-layer registration.
+        if (VKA_ENV("DM_VK_CUBE_VIEW_FIX", 0) &&
+            !storage &&
+            vt == VK_IMAGE_VIEW_TYPE_CUBE &&
+            im->d.target == NVN_TEXTURE_TARGET_CUBEMAP &&
+            im->w == im->h &&
+            im->layers == 6 &&
+            im->samples == 1 &&
+            a0 == 0 && na == 1) {
+            na = 6;
+            static _Atomic int cube_noted;
+            if (!atomic_exchange(&cube_noted, 1))
+                VLOG("experimental cube view fix: expanded one layer to six");
+        }
         if (im->w != im->h || im->layers < 6 || im->layers % 6 || im->samples > 1 || na < 6) return VK_NULL_HANDLE;
         if (vt == VK_IMAGE_VIEW_TYPE_CUBE) na = 6; else na -= na % 6;
     } else if (vt == VK_IMAGE_VIEW_TYPE_1D || vt == VK_IMAGE_VIEW_TYPE_2D) na = 1;
