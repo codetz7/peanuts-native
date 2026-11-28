@@ -34,3 +34,8 @@ sys_resource	0x1000000
 # the decoded shader code archives: the engine's global shaders and the game's material shaders
 shader_groups	ShaderArchive-Global-=global ShaderArchive-=game
 shader_note	MY HERO ONE'S JUSTICE shaders
+
+# ---- Frame rate (experimental) ----
+# Native 60 fps; optional 30 fps presentation cap.
+fps_limit_present	1
+fps_modes	30,60
